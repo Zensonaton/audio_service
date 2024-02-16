@@ -952,6 +952,13 @@ class AudioService {
   static BaseCacheManager get cacheManager => _cacheManager!;
   static BaseCacheManager? _cacheManager;
 
+  /// The method used to generate the cache key for interacting with a
+  /// MedieItem's artwork in the cache manager.
+  /// Defaults to using [MediaItem.artUri.toString] as the cache key.
+  static FutureOr<String> Function(MediaItem mediaItem) get cacheKeyResolver =>
+      _cacheKeyResolver!;
+  static FutureOr<String> Function(MediaItem mediaItem)? _cacheKeyResolver;
+
   static late AudioServiceConfig _config;
   static late AudioHandler _handler;
 
@@ -990,6 +997,7 @@ class AudioService {
     required T Function() builder,
     AudioServiceConfig? config,
     BaseCacheManager? cacheManager,
+    FutureOr<String> Function(MediaItem mediaItem)? cacheKeyResolver,
   }) async {
     assert(_cacheManager == null);
     config ??= const AudioServiceConfig();
@@ -997,6 +1005,8 @@ class AudioService {
     assert(config.rewindInterval > Duration.zero);
     WidgetsFlutterBinding.ensureInitialized();
     _cacheManager = (cacheManager ??= DefaultCacheManager());
+    _cacheKeyResolver = (cacheKeyResolver ??=
+        (MediaItem mediaItem) => mediaItem.artUri.toString());
     final callbacks = _HandlerCallbacks();
     _platform.setHandlerCallbacks(callbacks);
     await _platform.configure(ConfigureRequest(config: config._toMessage()));
@@ -1044,8 +1054,8 @@ class AudioService {
           sendToPlatform(artUri.toFilePath());
         } else {
           // Try to load a cached file from memory.
-          final fileInfo =
-              await cacheManager.getFileFromMemory(artUri.toString());
+          final fileInfo = await cacheManager
+              .getFileFromMemory(await cacheKeyResolver(mediaItem));
           final filePath = fileInfo?.file.path;
           if (operationId != artFetchOperationId) {
             return;
@@ -1217,8 +1227,9 @@ class AudioService {
           final headers = mediaItem.artHeaders;
           final file = headers != null
               ? await cacheManager.getSingleFile(mediaItem.artUri!.toString(),
-                  headers: headers)
-              : await cacheManager.getSingleFile(mediaItem.artUri!.toString());
+                  key: await cacheKeyResolver(mediaItem), headers: headers)
+              : await cacheManager.getSingleFile(mediaItem.artUri!.toString(),
+                  key: await cacheKeyResolver(mediaItem));
           return file.path;
         }
       }
