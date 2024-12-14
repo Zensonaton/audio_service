@@ -574,10 +574,11 @@ public class AudioService extends MediaBrowserServiceCompat {
         }
 
         if (oldProcessingState != AudioProcessingState.idle && processingState == AudioProcessingState.idle) {
-            // TODO: Handle completed state as well?
-            stop();
+            legacyStopForeground(true);
+            releaseWakeLock();
+			stop();
         } else if (processingState != AudioProcessingState.idle && notificationChanged) {
-            updateNotification();
+            exitForegroundState();
         }
     }
 
