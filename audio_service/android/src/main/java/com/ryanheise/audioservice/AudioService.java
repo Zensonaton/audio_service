@@ -574,11 +574,12 @@ public class AudioService extends MediaBrowserServiceCompat {
         }
 
         if (oldProcessingState != AudioProcessingState.idle && processingState == AudioProcessingState.idle) {
+			// New state is idle.
             legacyStopForeground(true);
-            releaseWakeLock();
-			stop();
+            stop();
         } else if (processingState != AudioProcessingState.idle && notificationChanged) {
-            exitForegroundState();
+			// New state is not idle, but something changed in the notification.
+            updateNotification();
         }
     }
 
